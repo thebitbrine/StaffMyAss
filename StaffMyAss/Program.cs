@@ -1,4 +1,4 @@
-﻿using OpenQA.Selenium;
+using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using System;
 using System.Collections.Generic;
@@ -24,6 +24,7 @@ namespace StaffMyAss
             Console.WriteLine("Starting...");
             List<string> potlink = new List<string>();
             potlink.AddRange(File.ReadAllLines("Linx.txt"));
+            List<string> newlink = new List<string>();
             Console.WriteLine("Loaded Linx.txt.");
             for (int i = 1; i < 10; i++)
             {
@@ -41,6 +42,7 @@ namespace StaffMyAss
                     if (match.ToString().StartsWith("/en/") && match.ToString().ToCharArray().Where(x => x == '/').Count() == 2 && !potlink.Contains(match.ToString()) && !filter.Contains(match.ToString()))
                     {
                         potlink.Add(match.ToString());
+                        newlink.Add(match.ToString());
                     }
                 }
                 Console.WriteLine($"Page {i}: Scraping done.");
@@ -50,31 +52,41 @@ namespace StaffMyAss
             File.WriteAllLines("Linx.txt", potlink.ToArray());
             Console.WriteLine("Saved Linx.txt.");
 
+            Console.WriteLine();
+
             List<string> Emails = new List<string>();
             Emails.AddRange(File.ReadAllLines("Emails.csv"));
             Console.WriteLine("Loaded Emails.csv");
-            foreach (var Listing in potlink)
+            if (newlink.Count > 0)
             {
-                Console.WriteLine($"Scraping {Listing.Split('/').Last()}");
-                driver.Navigate().GoToUrl($"https://staff.am{Listing}");
-                var pagesource = driver.PageSource;
-
-                Match m = new Regex("([\\w-+]+(?:\\.[\\w-+]+)*@(?:[\\w-]+\\.)+[a-zA-Z]{2,7})", RegexOptions.IgnoreCase | RegexOptions.Singleline).Match(pagesource);
-                if (m.Success)
+                foreach (var Listing in newlink)
                 {
-                    var em = m.Groups[1].ToString();
-                    if (!Emails.Contains(em))
+                    Console.WriteLine($"Scraping {Listing.Split('/').Last()}");
+                    driver.Navigate().GoToUrl($"https://staff.am{Listing}");
+                    var pagesource = driver.PageSource;
+
+                    Match m = new Regex("([\\w-+]+(?:\\.[\\w-+]+)*@(?:[\\w-]+\\.)+[a-zA-Z]{2,7})", RegexOptions.IgnoreCase | RegexOptions.Singleline).Match(pagesource);
+                    if (m.Success)
                     {
-                        Emails.Add(em);
-                        Console.WriteLine($"Found: {em}");
+                        var em = m.Groups[1].ToString();
+                        if (!Emails.Contains(em))
+                        {
+                            Emails.Add(em);
+                            Console.WriteLine($"Found: {em}");
+                        }
                     }
+                    Console.WriteLine("No new emails found.");
                 }
-                Console.WriteLine("No new emails found.");
+
+                Emails = Emails.OrderBy(z => z.ToString()).ToList();
+                File.WriteAllLines("Emails.csv", Emails);
+                Console.WriteLine("Saved Emails.csv");
+            }
+            else
+            {
+                Console.WriteLine("No new listings found.");
             }
 
-            Emails = Emails.OrderBy(z => z.ToString()).ToList();
-            File.WriteAllLines("Emails.csv", Emails);
-            Console.WriteLine("Saved Emails.csv");
             Console.WriteLine("\nDone, exiting...");
             
         }
